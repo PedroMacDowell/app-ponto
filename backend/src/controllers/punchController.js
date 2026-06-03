@@ -120,6 +120,7 @@ exports.createPunch = async (req, res) => {
       type: nextType,
       photo: {
         filename: `punch_${user.userId}_${Date.now()}.jpg`,
+        data: photoBase64,
         hash: photoHash,
         size: photoBase64.length,
         mimeType: 'image/jpeg',
@@ -203,7 +204,9 @@ exports.getTodayPunches = async (req, res) => {
         $gte: startOfDay,
         $lte: endOfDay,
       },
-    }).sort({ timestamp: -1 });
+    })
+      .select('-photo.data')
+      .sort({ timestamp: -1 });
 
     res.json({
       success: true,
@@ -233,6 +236,7 @@ exports.getPunchHistory = async (req, res) => {
     }
 
     const punches = await Punch.find(filter)
+      .select('-photo.data')
       .sort({ timestamp: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset));

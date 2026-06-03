@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -29,6 +32,7 @@ export const AdminDashboardScreen = () => {
   const { user, logout } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   useEffect(() => {
     loadDashboard();
@@ -54,6 +58,18 @@ export const AdminDashboardScreen = () => {
   };
 
   const employees = dashboard?.employees || [];
+
+  const openPhoto = (punch) => {
+    if (!punch?.photo?.data) {
+      Alert.alert('Foto indisponivel', 'Esta batida ainda nao tem foto salva.');
+      return;
+    }
+
+    setSelectedPhoto({
+      title: `${punch.type} - ${PunchService.formatTime(punch.timestamp)}`,
+      uri: `data:${punch.photo.mimeType || 'image/jpeg'};base64,${punch.photo.data}`,
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,6 +107,13 @@ export const AdminDashboardScreen = () => {
             <Text style={styles.summaryLabel}>Completos</Text>
             <Text style={styles.summaryValue}>
               {dashboard?.summary?.completed || 0}
+            </Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <MaterialIcons name="timer" size={28} color="#FF9500" />
+            <Text style={styles.summaryLabel}>Horas</Text>
+            <Text style={styles.summaryValue}>
+              {dashboard?.summary?.workedHours || '00:00'}
             </Text>
           </View>
         </View>
@@ -134,18 +157,56 @@ export const AdminDashboardScreen = () => {
 
               <View style={styles.punchGrid}>
                 {COLUMNS.map((column) => (
-                  <View key={column.key} style={styles.punchCell}>
+                  <TouchableOpacity
+                    key={column.key}
+                    style={styles.punchCell}
+                    onPress={() => openPhoto(item.byType[column.key])}
+                    disabled={!item.byType[column.key]}
+                  >
                     <Text style={styles.punchLabel}>{column.label}</Text>
                     <Text style={styles.punchValue}>
                       {formatPunch(item.byType[column.key])}
                     </Text>
-                  </View>
+                    {item.byType[column.key]?.photo?.data && (
+                      <MaterialIcons
+                        name="photo-camera"
+                        size={14}
+                        color="#007AFF"
+                        style={styles.photoIcon}
+                      />
+                    )}
+                  </TouchableOpacity>
                 ))}
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total trabalhado</Text>
+                <Text style={styles.totalValue}>{item.workedHours}</Text>
               </View>
             </View>
           ))
         )}
       </ScrollView>
+
+      <Modal visible={Boolean(selectedPhoto)} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{selectedPhoto?.title}</Text>
+            {selectedPhoto?.uri && (
+              <Image
+                source={{ uri: selectedPhoto.uri }}
+                style={styles.modalImage}
+                resizeMode="cover"
+              />
+            )}
+            <Button
+              title="Fechar"
+              onPress={() => setSelectedPhoto(null)}
+              style={styles.closeButton}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -284,6 +345,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 8,
+    minHeight: 66,
   },
   punchLabel: {
     color: '#666',
@@ -295,5 +357,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     marginTop: 4,
+  },
+  photoIcon: {
+    marginTop: 4,
+  },
+  totalRow: {
+    borderTopColor: '#E5E7EB',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+  },
+  totalLabel: {
+    color: '#555',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  totalValue: {
+    color: '#111',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+  },
+  modalTitle: {
+    color: '#111',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  modalImage: {
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    height: 420,
+    width: '100%',
+  },
+  closeButton: {
+    marginTop: 14,
   },
 });

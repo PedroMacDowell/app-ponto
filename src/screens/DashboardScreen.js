@@ -16,33 +16,42 @@ import { ApiService } from '../services/logger/ApiService';
 import { LocationService } from '../services/LocationService';
 import { USE_API } from '../config/api';
 
-const calculateWorkedHours = (punches) => {
-  const orderedPunches = [...punches].sort(
-    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-  );
+const getPunchByType = (punches, type) => {
+  return punches.find((punch) => punch.type === type);
+};
 
-  let totalMs = 0;
-  let openEntry = null;
+const calculateWorkedMs = (punches) => {
+  const entrada = getPunchByType(punches, 'entrada');
+  const intervalo = getPunchByType(punches, 'intervalo');
+  const retorno = getPunchByType(punches, 'retorno');
+  const saida = getPunchByType(punches, 'saida');
 
-  orderedPunches.forEach((punch) => {
-    if (punch.type === 'entrada' || punch.type === 'retorno') {
-      openEntry = new Date(punch.timestamp);
-      return;
-    }
+  let total = 0;
 
-    if ((punch.type === 'saida' || punch.type === 'intervalo') && openEntry) {
-      totalMs += new Date(punch.timestamp) - openEntry;
-      openEntry = null;
-    }
-  });
+  if (entrada && intervalo) {
+    total += new Date(intervalo.timestamp) - new Date(entrada.timestamp);
+  }
 
-  return Math.max(0, Math.floor(totalMs / 1000 / 60 / 60));
+  if (retorno && saida) {
+    total += new Date(saida.timestamp) - new Date(retorno.timestamp);
+  }
+
+  return Math.max(0, total);
+};
+
+const formatDuration = (durationMs) => {
+  const totalMinutes = Math.floor(durationMs / 1000 / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
 export const DashboardScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [todayPunches, setTodayPunches] = useState([]);
   const [pendingHours, setPendingHours] = useState(40);
+  const [workedToday, setWorkedToday] = useState('00:00');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,10 +66,12 @@ export const DashboardScreen = ({ navigation }) => {
       const punches = USE_API
         ? (await ApiService.getTodayPunches()).data || []
         : await PunchService.getTodayPunches(user.id);
-      const workedHours = calculateWorkedHours(punches);
+      const workedMs = calculateWorkedMs(punches);
+      const workedHours = Math.floor(workedMs / 1000 / 60 / 60);
 
       setTodayPunches(punches);
       setPendingHours(Math.max(0, 40 - workedHours));
+      setWorkedToday(formatDuration(workedMs));
     } catch (error) {
       Alert.alert(
         'Erro',
@@ -106,8 +117,8 @@ export const DashboardScreen = ({ navigation }) => {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <MaterialIcons name="schedule" size={32} color="#007AFF" />
-            <Text style={styles.statLabel}>Horas Pendentes</Text>
-            <Text style={styles.statValue}>{pendingHours}h</Text>
+            <Text style={styles.statLabel}>Trabalhadas Hoje</Text>
+            <Text style={styles.statValue}>{workedToday}</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -171,7 +182,7 @@ export const DashboardScreen = ({ navigation }) => {
             </View>
             <View style={styles.weeklyRow}>
               <Text style={styles.weeklyLabel}>Trabalhadas:</Text>
-              <Text style={styles.weeklyValue}>{40 - pendingHours}h</Text>
+              <Text style={styles.weeklyValue}>{workedToday}</Text>
             </View>
             <View style={styles.weeklyRow}>
               <Text style={styles.weeklyLabel}>Pendentes:</Text>

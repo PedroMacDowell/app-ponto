@@ -4,6 +4,32 @@ const logger = require('../utils/logger');
 
 const PUNCH_TYPES = ['entrada', 'intervalo', 'retorno', 'saida'];
 
+const calculateWorkedMs = (byType) => {
+  let total = 0;
+
+  if (byType.entrada && byType.intervalo) {
+    total +=
+      new Date(byType.intervalo.timestamp) -
+      new Date(byType.entrada.timestamp);
+  }
+
+  if (byType.retorno && byType.saida) {
+    total +=
+      new Date(byType.saida.timestamp) -
+      new Date(byType.retorno.timestamp);
+  }
+
+  return Math.max(0, total);
+};
+
+const formatDuration = (durationMs) => {
+  const totalMinutes = Math.floor(durationMs / 1000 / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 const getDayRange = () => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -30,7 +56,9 @@ exports.getTodayDashboard = async (req, res) => {
         $gte: startOfDay,
         $lte: endOfDay,
       },
-    }).sort({ timestamp: 1 });
+    })
+      .select('+photo.data')
+      .sort({ timestamp: 1 });
 
     const punchesByUserId = punches.reduce((acc, punch) => {
       const key = punch.userId.toString();
@@ -45,11 +73,14 @@ exports.getTodayDashboard = async (req, res) => {
         acc[type] = userPunches.find((punch) => punch.type === type) || null;
         return acc;
       }, {});
+      const workedMs = calculateWorkedMs(byType);
 
       return {
         user: user.toJSON(),
         punches: userPunches,
         byType,
+        workedMs,
+        workedHours: formatDuration(workedMs),
         completed: Boolean(
           byType.entrada &&
             byType.intervalo &&
@@ -66,6 +97,10 @@ exports.getTodayDashboard = async (req, res) => {
         employees: employees.length,
         withEntrada: employees.filter((item) => item.byType.entrada).length,
         completed: employees.filter((item) => item.completed).length,
+        workedMs: employees.reduce((total, item) => total + item.workedMs, 0),
+        workedHours: formatDuration(
+          employees.reduce((total, item) => total + item.workedMs, 0)
+        ),
       },
       employees,
     });

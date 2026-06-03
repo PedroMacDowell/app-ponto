@@ -33,6 +33,10 @@ const PunchSchema = new mongoose.Schema(
     photo: {
       filename: String,
       url: String,
+      data: {
+        type: String,
+        select: false,
+      },
       size: Number,
       mimeType: String,
       // Hash da foto para detectar duplicatas

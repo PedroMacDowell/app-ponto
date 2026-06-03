@@ -2,12 +2,22 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-export const PunchCard = ({ time, location, photo, onDelete }) => (
+const TYPE_LABELS = {
+  entrada: 'Entrada',
+  intervalo: 'Intervalo',
+  retorno: 'Retorno',
+  saida: 'Saida',
+};
+
+export const PunchCard = ({ time, type, location, photo, onDelete }) => (
   <View style={styles.card}>
     <View style={styles.header}>
-      <View>
-        <Text style={styles.time}>{time}</Text>
-        <Text style={styles.location}>📍 {location}</Text>
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <Text style={styles.time}>{time}</Text>
+          {type && <Text style={styles.badge}>{TYPE_LABELS[type] || type}</Text>}
+        </View>
+        <Text style={styles.location}>{location}</Text>
       </View>
       {onDelete && (
         <TouchableOpacity onPress={onDelete}>
@@ -17,7 +27,7 @@ export const PunchCard = ({ time, location, photo, onDelete }) => (
     </View>
     {photo && (
       <View style={styles.photoContainer}>
-        <Text style={styles.photoPlaceholder}>📸 Foto capturada</Text>
+        <Text style={styles.photoPlaceholder}>Foto capturada</Text>
       </View>
     )}
   </View>
@@ -42,10 +52,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  content: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   time: {
     fontSize: 18,
     fontWeight: '600',
     color: '#000',
+  },
+  badge: {
+    backgroundColor: '#E8F2FF',
+    borderRadius: 6,
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '700',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   location: {
     fontSize: 14,

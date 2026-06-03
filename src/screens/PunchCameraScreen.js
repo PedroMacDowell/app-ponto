@@ -18,6 +18,13 @@ import { ApiService } from '../services/logger/ApiService';
 import { USE_API } from '../config/api';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 
+const PUNCH_TYPE_LABELS = {
+  entrada: 'Entrada',
+  intervalo: 'Intervalo',
+  retorno: 'Retorno',
+  saida: 'Saida',
+};
+
 export const PunchCameraScreen = ({ navigation }) => {
   const { user } = useAuth();
   const cameraRef = useRef(null);
@@ -57,15 +64,6 @@ export const PunchCameraScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      if (biometricAvailable) {
-        const authenticated = await BiometricService.authenticate();
-        if (!authenticated) {
-          Alert.alert('Erro', 'Autenticacao biometrica falhou');
-          setLoading(false);
-          return;
-        }
-      }
-
       const currentLocation = await LocationService.getCurrentLocation();
       if (!currentLocation) {
         Alert.alert('Erro', 'Nao foi possivel obter a localizacao');
@@ -80,11 +78,20 @@ export const PunchCameraScreen = ({ navigation }) => {
         return;
       }
 
+      if (biometricAvailable) {
+        const authenticated = await BiometricService.authenticate();
+        if (!authenticated) {
+          Alert.alert('Erro', 'Autenticacao biometrica falhou');
+          setLoading(false);
+          return;
+        }
+      }
+
       const result = USE_API
         ? await ApiService.createPunch(
             photoData.base64,
             currentLocation,
-            'entrada',
+            undefined,
             biometricAvailable ? 'faceid' : 'none'
           )
         : await PunchService.recordPunch(photoData, currentLocation, user.id);
@@ -92,13 +99,16 @@ export const PunchCameraScreen = ({ navigation }) => {
       setLoading(false);
 
       if (result.success) {
+        const punchType = USE_API ? result.punch.type : result.data.type;
+
         Alert.alert(
           'Sucesso!',
           'Ponto batido com sucesso!\n\n' +
+            `Tipo: ${PUNCH_TYPE_LABELS[punchType] || punchType}\n` +
             `Horario: ${PunchService.formatTime(
               USE_API ? result.punch.timestamp : result.data.timestamp
             )}\n` +
-            `Local: ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`,
+            `Local: ${LocationService.formatLocation(currentLocation)}`,
           [
             {
               text: 'Voltar para Dashboard',
@@ -166,10 +176,7 @@ export const PunchCameraScreen = ({ navigation }) => {
         <View style={styles.locationInfo}>
           <MaterialIcons name="location-on" size={20} color="#34C759" />
           <Text style={styles.locationText}>
-            {LocationService.formatCoordinates(
-              locationData.latitude,
-              locationData.longitude
-            )}
+            {LocationService.formatLocation(locationData)}
           </Text>
         </View>
       )}

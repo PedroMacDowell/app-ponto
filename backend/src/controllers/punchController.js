@@ -13,12 +13,40 @@ const generatePhotoHash = (photoData) => {
     .digest('hex');
 };
 
+const PUNCH_SEQUENCE = ['entrada', 'intervalo', 'retorno', 'saida'];
+
+const getDayRange = () => {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  return { startOfDay, endOfDay };
+};
+
+const getNextPunchType = async (userId) => {
+  const { startOfDay, endOfDay } = getDayRange();
+
+  const todayCount = await Punch.countDocuments({
+    userId,
+    timestamp: {
+      $gte: startOfDay,
+      $lte: endOfDay,
+    },
+  });
+
+  return {
+    todayCount,
+    nextType: PUNCH_SEQUENCE[todayCount],
+  };
+};
+
 exports.createPunch = async (req, res) => {
   try {
     const {
       photoBase64,
       location,
-      type = 'entrada',
       biometryType,
       deviceId,
       captureMethod,
@@ -36,6 +64,14 @@ exports.createPunch = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Usuário não encontrado',
+      });
+    }
+
+    const { todayCount, nextType } = await getNextPunchType(req.user.id);
+    if (!nextType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Limite de 4 batidas de ponto atingido hoje',
       });
     }
 
@@ -81,7 +117,7 @@ exports.createPunch = async (req, res) => {
     const punch = await Punch.create({
       userId: req.user.id,
       userEmail: user.email,
-      type,
+      type: nextType,
       photo: {
         filename: `punch_${user.userId}_${Date.now()}.jpg`,
         hash: photoHash,
@@ -92,6 +128,7 @@ exports.createPunch = async (req, res) => {
         latitude: location.latitude,
         longitude: location.longitude,
         accuracy: location.accuracy,
+        address: location.address,
       },
       security: {
         captureMethod: captureMethod || 'camera',
@@ -113,11 +150,12 @@ exports.createPunch = async (req, res) => {
       status: 'success',
       userId: user.userId,
       email: user.email,
-      description: `Ponto batido - Tipo: ${type}`,
+      description: `Ponto batido - Tipo: ${nextType}`,
       data: {
         punchId: punch.punchId,
         location,
         captureMethod,
+        sequence: todayCount + 1,
       },
       ipAddress: req.ip,
       deviceId,
@@ -126,7 +164,8 @@ exports.createPunch = async (req, res) => {
     logger.info('Ponto criado com sucesso', {
       userId: user.userId,
       punchId: punch.punchId,
-      type,
+      type: nextType,
+      sequence: todayCount + 1,
     });
 
     res.status(201).json({
@@ -138,6 +177,7 @@ exports.createPunch = async (req, res) => {
         timestamp: punch.timestamp,
         type: punch.type,
         status: punch.status,
+        sequence: todayCount + 1,
       },
     });
   } catch (error) {

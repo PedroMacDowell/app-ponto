@@ -1,22 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const PUNCH_SEQUENCE = ['entrada', 'intervalo', 'retorno', 'saida'];
+
 export const PunchService = {
   async recordPunch(photoData, locationData, userId) {
     try {
+      const todayPunches = await this.getTodayPunches(userId);
+      const type = PUNCH_SEQUENCE[todayPunches.length];
+
+      if (!type) {
+        return {
+          success: false,
+          error: 'Limite de 4 batidas de ponto atingido hoje',
+        };
+      }
+
       const punchRecord = {
         id: Math.random().toString(36).substr(2, 9),
         userId,
         timestamp: new Date().toISOString(),
         photo: photoData,
         location: locationData,
-        type: this.getPunchType(), // entrada, saída, intervalo
+        type,
         status: 'confirmed',
       };
 
-      // Salvar no AsyncStorage (em produção, enviar para API)
       const punchesKey = `punches_${userId}`;
-      const existingPunches = await AsyncStorage.getItem(punchesKey);
-      const punches = existingPunches ? JSON.parse(existingPunches) : [];
+      const storedPunches = await AsyncStorage.getItem(punchesKey);
+      const punches = storedPunches ? JSON.parse(storedPunches) : [];
       punches.push(punchRecord);
       await AsyncStorage.setItem(punchesKey, JSON.stringify(punches));
 
@@ -50,16 +61,9 @@ export const PunchService = {
     }
   },
 
-  getPunchType() {
-    const hour = new Date().getHours();
-    // Lógica simples - em produção seria mais complexa
-    return 'entrada';
-  },
-
-  calculatePendingHours(userId) {
-    // Calcular horas pendentes baseado nos punches
-    const weeklyTarget = 40; // horas por semana
-    return Math.max(0, weeklyTarget - Math.floor(Math.random() * 20));
+  calculatePendingHours() {
+    const weeklyTarget = 40;
+    return weeklyTarget;
   },
 
   formatTime(timestamp) {

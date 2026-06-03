@@ -37,6 +37,11 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: 'Geral',
     },
+    role: {
+      type: String,
+      enum: ['employee', 'admin'],
+      default: 'employee',
+    },
     // Metadados do dispositivo
     deviceInfo: {
       deviceId: String,

@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { PunchCard } from '../components/PunchCard';
 import { PunchService } from '../services/PunchService';
 import { ApiService } from '../services/logger/ApiService';
+import { LocationService } from '../services/LocationService';
 import { USE_API } from '../config/api';
 
 const calculateWorkedHours = (punches) => {
@@ -153,7 +154,8 @@ export const DashboardScreen = ({ navigation }) => {
               <PunchCard
                 key={punch._id || punch.punchId}
                 time={PunchService.formatTime(punch.timestamp)}
-                location={`${punch.location.latitude.toFixed(4)}, ${punch.location.longitude.toFixed(4)}`}
+                type={punch.type}
+                location={LocationService.formatLocation(punch.location)}
                 photo={punch.photo}
               />
             ))

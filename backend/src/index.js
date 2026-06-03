@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 
 const authRoutes = require('./routes/authRoutes');
 const punchRoutes = require('./routes/punchRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
@@ -41,6 +42,7 @@ app.use((req, res, next) => {
 // Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/punch', punchRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

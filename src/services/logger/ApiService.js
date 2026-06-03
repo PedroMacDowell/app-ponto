@@ -179,4 +179,14 @@ export const ApiService = {
       return { isDuplicate: false };
     }
   },
+
+  async getAdminTodayDashboard() {
+    try {
+      const response = await apiClient.get('/admin/dashboard/today');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao obter dashboard admin:', error);
+      throw error;
+    }
+  },
 };

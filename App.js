@@ -7,6 +7,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { PunchCameraScreen } from './src/screens/PunchCameraScreen';
+import { AdminDashboardScreen } from './src/screens/AdminDashboardScreen';
 
 const Stack = createStackNavigator();
 
@@ -34,8 +35,19 @@ const AppStack = () => (
   </Stack.Navigator>
 );
 
+const AdminStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+      animationEnabled: true,
+    }}
+  >
+    <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+  </Stack.Navigator>
+);
+
 const RootNavigator = () => {
-  const { loading, isSignedIn } = useAuth();
+  const { loading, isSignedIn, user } = useAuth();
 
   if (loading) {
     return <SplashScreen loading={true} />;
@@ -43,7 +55,15 @@ const RootNavigator = () => {
 
   return (
     <NavigationContainer>
-      {isSignedIn ? <AppStack /> : <AuthStack />}
+      {isSignedIn ? (
+        user?.role === 'admin' ? (
+          <AdminStack />
+        ) : (
+          <AppStack />
+        )
+      ) : (
+        <AuthStack />
+      )}
     </NavigationContainer>
   );
 };

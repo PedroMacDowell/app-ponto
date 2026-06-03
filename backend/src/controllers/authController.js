@@ -4,6 +4,28 @@ const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
 
+const getRoleForEmail = (email) => {
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return adminEmails.includes(email.toLowerCase()) ? 'admin' : 'employee';
+};
+
+const signToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE }
+  );
+};
+
 exports.register = async (req, res) => {
   try {
     const { name, email, password, confirmPassword } = req.body;
@@ -46,6 +68,7 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
+      role: getRoleForEmail(email),
       deviceInfo: {
         deviceId: req.body.deviceId,
         deviceName: req.body.deviceName,
@@ -66,15 +89,7 @@ exports.register = async (req, res) => {
     });
 
     // Gerar token
-    const token = jwt.sign(
-      {
-        id: user._id,
-        userId: user.userId,
-        email: user.email,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
+    const token = signToken(user);
 
     logger.info('Usuário registrado com sucesso', {
       email,
@@ -185,15 +200,12 @@ exports.login = async (req, res) => {
     });
 
     // Gerar token
-    const token = jwt.sign(
-      {
-        id: user._id,
-        userId: user.userId,
-        email: user.email,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
+    if (user.role !== getRoleForEmail(user.email)) {
+      user.role = getRoleForEmail(user.email);
+      await user.save();
+    }
+
+    const token = signToken(user);
 
     logger.info('Login bem-sucedido', { email, userId: user.userId });
 

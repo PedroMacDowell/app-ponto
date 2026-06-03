@@ -6,21 +6,45 @@ export const CameraService = {
       const camera = cameraRef?.current || cameraRef;
       if (!camera) return null;
 
-      const photo = await camera.takePictureAsync({
-        quality: 0.8,
-        base64: true,
-        skipProcessing: true,
-      });
+      const photo = await this.captureWithRetry(camera);
+
+      const base64 =
+        photo.base64 ||
+        (photo.uri
+          ? await FileSystem.readAsStringAsync(photo.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            })
+          : null);
 
       return {
         uri: photo.uri,
-        base64: photo.base64,
+        base64,
         timestamp: new Date().toISOString(),
         type: 'image/jpeg',
       };
     } catch (error) {
       console.error('Erro ao capturar foto:', error);
       return null;
+    }
+  },
+
+  async captureWithRetry(camera) {
+    try {
+      return await camera.takePictureAsync({
+        quality: 0.7,
+        base64: true,
+        exif: false,
+      });
+    } catch (error) {
+      console.warn('Primeira captura falhou, tentando novamente:', error);
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      return await camera.takePictureAsync({
+        quality: 0.5,
+        base64: false,
+        exif: false,
+      });
     }
   },
 
